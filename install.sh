@@ -64,6 +64,11 @@ rm -f "/tmp/${KEYRING_FILE}"
 
 ok "CUDA Toolkit installed"
 
+info "Installing Nvidia Driver"
+
+apt-get install -y nvidia-open
+
+ok "Nvidia Driver installed"
 # -- docker --
 
 info "Installing Docker..."
