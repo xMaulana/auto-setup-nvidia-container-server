@@ -14,7 +14,6 @@ die()  { echo -e "${RED}[!!]${NC} $1"; exit 1; }
 
 [ "$EUID" -ne 0 ] && die "Run as root: sudo bash install.sh"
 
-# read os info
 [ -f /etc/os-release ] || die "Cannot read /etc/os-release"
 . /etc/os-release
 OS_ID=$ID
@@ -49,8 +48,6 @@ echo ""
 read -p "Continue? (y/N): " CONFIRM
 [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]] && { echo "Aborted."; exit 0; }
 
-# -- cuda toolkit --
-
 info "Installing CUDA Toolkit $CUDA_VERSION..."
 
 KEYRING_FILE="cuda-keyring_1.1-1_all.deb"
@@ -64,12 +61,31 @@ rm -f "/tmp/${KEYRING_FILE}"
 
 ok "CUDA Toolkit installed"
 
+info "Installing kernel headers and build tools..."
+apt-get install -y linux-headers-$(uname -r) build-essential
+ok "Kernel headers and build tools installed"
+
+if lsmod | grep -q nouveau; then
+    warn "Nouveau kernel module is currently loaded. It will be blacklisted now."
+else
+    info "Nouveau module not currently loaded. Proceeding with blacklist."
+fi
+
+info "Blacklisting nouveau driver..."
+cat > /etc/modprobe.d/blacklist-nouveau.conf <<EOF
+blacklist nouveau
+options nouveau modeset=0
+EOF
+
+update-initramfs -u
+ok "Nouveau blacklisted. initramfs updated."
+
+warn "A reboot is recommended before the NVIDIA driver can be used."
+warn "The script will now install the NVIDIA driver, but you must reboot afterwards."
+
 info "Installing Nvidia Driver"
-
 apt-get install -y nvidia-open
-
 ok "Nvidia Driver installed"
-# -- docker --
 
 info "Installing Docker..."
 
@@ -101,8 +117,6 @@ systemctl start docker
 
 ok "Docker installed: $(docker --version)"
 
-# -- nvidia container toolkit --
-
 info "Installing NVIDIA Container Toolkit $CTK_VERSION..."
 
 apt-get install -y --no-install-recommends ca-certificates curl gnupg2
@@ -114,7 +128,6 @@ curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-contai
   | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' \
   | tee /etc/apt/sources.list.d/nvidia-container-toolkit.list > /dev/null
 
-# enable experimental packages
 sed -i -e '/experimental/ s/^#//g' /etc/apt/sources.list.d/nvidia-container-toolkit.list
 
 apt-get update -q
@@ -129,11 +142,11 @@ systemctl restart docker
 
 ok "NVIDIA Container Toolkit installed"
 
-# done
 echo ""
 ok "All done."
 echo ""
-warn "Reboot or re-login to activate CUDA PATH"
+warn "REBOOT NOW to activate the NVIDIA driver and CUDA PATH."
+warn "After reboot, the driver will load automatically (nouveau is blacklisted)."
 echo ""
 echo "  Test GPU in Docker:"
 echo "  docker run --rm --gpus all nvidia/cuda:12.1.0-base-ubuntu22.04 nvidia-smi"
