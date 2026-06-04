@@ -84,7 +84,7 @@ warn "A reboot is recommended before the NVIDIA driver can be used."
 warn "The script will now install the NVIDIA driver, but you must reboot afterwards."
 
 info "Installing Nvidia Driver"
-apt-get install -y nvidia-open
+apt-get install -y nvidia-driver nvidia-open firmware-misc-nonfree
 ok "Nvidia Driver installed"
 
 info "Installing Docker..."
