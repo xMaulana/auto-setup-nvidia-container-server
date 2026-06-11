@@ -137,6 +137,17 @@ apt-get install -y \
   libnvidia-container-tools=${CTK_VERSION} \
   libnvidia-container1=${CTK_VERSION}
 
+mkdir -p /etc/docker
+tee > /etc/docker/daemon.json <<EOF
+{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m",
+    "max-file": "3"
+  }
+}
+EOF
+
 nvidia-ctk runtime configure --runtime=docker
 systemctl restart docker
 
